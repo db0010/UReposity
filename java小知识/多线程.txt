@@ -1,0 +1,45 @@
+12月19日：（1)创建一个新进程可以通过继承Thread类、继承Runnable接口、还有Callable接口（具体怎么用的还不清楚）
+	   (2)新进程类可以写成内部类，然后在主函数中实例化，例如：Tread t=new MyThread()，还要重写run（），调用start()时才执行线程
+	 （3）t.join()方法：让正在执行的线程等待，转去执行t线程，执行完毕，把之前等待的线程转为执行状态,
+	 （4）t.setPriority(2):设置线程的优先级,参数为级别，但是多个线程的执行顺序由操作系统决定
+	  (5)线程的状态有：new,blocked,waiting,Runnable,timed waiting,terminated
+12月20日：  （1）当一个线程调用setDaemon(true)方法时，就把该线程设置为了守护线程，在JVM退出后，守护线程也会在后台一直运行
+		因此在所有非守护线程退出之前，守护线程不能持有任何需要关闭的资源，例如打开的文件等，否则会导致数据丢失
+	    （2）调用一个线程的interrupt()方法,并不会中断，还需要判断run()方法里面又有isInterrupt()加上while语句之类的达到中断效果的语句
+	   （3）volatile关键字修饰的变量可以被多个线程使用，是一个多线程间的共享变量，且多个线程使用时都是最新的
+		修改变量的值，本质是修改的是JVM主存里面的变量的副本，然后JVM把副本写会主存更新内容，在此期间其他线程可能调用该变量
+		volatile关键字的作用就是让该变量在写回JVM主存之前，其他线程不能调用，有点类似加锁的意思
+			每次访问变量时，总是获取主内存的最新值；
+			每次修改变量后，立刻回写到主内存。
+	   （4）synchronized关键字的作用是使该关键字后面代码块里面的语句实现原子操作
+		1.原子操作就是在多线程的情况下，在同一时刻只能有一个线程能够对该共享变量操作，JVM规定基本数据类型和引用类型的赋值操作
+		(除了long，daouble，都是8字节)都是原子操作，不必加synchronized关键字都是只能单个线程使用，
+		2.synchronized(对象){需要锁住的操作}，可以根据参数里面对象的不同，来对不同的分组上锁，如果不分组的话获得锁的对象必须一致
+		3.当synchronized作为修饰符来修饰一个方法时，表示锁住的对象是this，即当前对象，锁的范围是锁住了整个方法
+		4.当synchronized作为修饰符来修饰的是一个static方法，静态方法是没有this实例的，静态方法是属于类的，因此锁住的是整个类
+		  但是每个类都有一个calss对象，因次参数是类.class
+		5.synchronized关键字只解决了多线程之间的竞争问题，并不能多线程的协调并发，这就需要用到下面的wait(),notify()等等
+	   (5)线程安全类：即类里面是的操作都变成了原子操作，允许多线程情况下使用类里面的属性和方法，不会导致数据的不一致
+12月21日：（1)什么是死锁？死锁是多个线程各自持有自己的临界资源，并且都想要获得对方所 掌握的资源，导致无限等待
+		避免死锁：在程序中synchronized获取锁的顺序一致
+	  （2)java中synchronized获得的锁是可重入锁，即在同一个线程中可以重复获取的锁
+	   (3)对象.wait()方法是让调用wait()的线程处于等待状态，并释放对象锁，直到在其他线程中用notify()等方法唤醒之后，才试图重新获得锁
+		wait(),notify,notifyAll()方法都是只能在synchronized的代码块中
+	  (4)对象.notify()方法是让该对象锁上随机的一个等待的线程被唤醒，notifyAll()方法是唤醒锁上的所有等待的线程
+	（5）concurrent包里的ReentrantLock类可以获取锁，相比于synchronized等待获取锁的时间减少，因为超过一秒没获取到就会释放锁
+		private  static final Lock lock=new ReentrantLock();//为什么要加final修饰符？因为如果不加final，代表该锁可以被重新赋值，这样变成新的锁了，其他线程就有了运行的权力了
+		lock.lock():获取锁，然后后面跟着try和finally，fianlly里面必须写lock.unlock()来释放锁
+public class Counter {
+    private final Lock lock = new ReentrantLock();
+    private int count;
+    public void add(int n) {
+        if (lock.tryLock(1, TimeUnit.SECONDS)) {
+        try {
+            count += n;
+        } finally {
+            lock.unlock();
+        }
+	}
+    }
+}
+	ReetrantLock锁实质上就是创建Lock类的对象时，new的是ReertantLock类的构造函数，相比与synchronized没有死锁的风险，因为加了尝试获取锁的时间限制，最多1秒，没有就返回false

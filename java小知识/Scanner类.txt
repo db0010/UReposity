@@ -1,0 +1,6 @@
+（1）创建一个scanner对象的时候，要把控制台的输入作为构造函数的参数，例如：Scanner scan=new Scanner(System.in);
+（2）hasNext():判断是否还有输入，一般都是先hasNext()或者hasNextLine()判断数据结构中是否还有数据,接着在用Next()或者NextLine()取值
+（3）Next()与NextLine()的区别：Next中间遇见空格就结束读了，Nextline遇见回车才结束读
+（4）hasNextInt()、hasNextFloat()、hasNextDouble()等等，用来判读是否是指定输入的数据，和if判断结合起来判断是否接受值
+（5）定义float数据的时候：float f=2.1f；要加上f后缀
+（6)尽量不要使用while(hasNext()){}，这样会导致无限输入等待，可以按Ctrl+C结束输入，集合不行的时候，就用数组吧；有个问题就是怎样手动输入一个动态数组
