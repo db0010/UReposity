@@ -270,7 +270,7 @@ application.yml配置文件也可以是application.properties格式，当两中�
      }
      ```
 
-   - 还需要更换RedisTemplate的默认使用的JdkSerializationRedisSerializer序列化，StringRedisTemplate默认使用StringRedisSerializer序列化；Fastjson的序列化和反序列化速度是高于Jackson的，所以这里需要自己实现Fastjson的序列化方式；
+   - 还需要更换RedisTemplate的默认使用的JdkSerializationRedisSerializer序列化，该序列化使用的iso的编码方式，不支持中文，因此要更换序列化，StringRedisTemplate默认使用StringRedisSerializer序列化；Fastjson的序列化和反序列化速度是高于Jackson的，所以这里需要自己实现Fastjson的序列化方式；
 
      - 导入Fastjson的依赖
 

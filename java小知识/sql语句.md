@@ -12,6 +12,17 @@ create table filename(
 insert into 
 tablename(id,name)
 value(1,'代彬')
+
+- 插入多条记录；注意使用的是values关键字，每条记录用小括号和逗号分隔
+
+  ```sql
+  insert 
+  into actor(actor_id,first_name,last_name,last_update)
+  values(1,'PENELOPE','GUINESS','2006-02-15 12:34:33'),(2,'NICK','WAHLBERG','2006-02-15 12:34:33')
+  ```
+
+  
+
 （4）更新记录:name和id是自己定义的字段；注意写更新语句的时候一定要加where语句，不然就是把指定表的所有该属性设置为了这个值
 update tablename
 set name='熊波'
