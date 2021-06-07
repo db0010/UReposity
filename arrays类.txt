@@ -1,0 +1,11 @@
+（1）arrays类：处于java.util包下，是一个用于操作数组为单位的帮助类
+（2）List<T> asList(T... a)：返回由指定数组支持的固定大小的列表，例如L:List<String> stooges = Arrays.asList("Larry", "Moe", "Curly"); 
+（3)int binarySearch(byte[] a,byte key):使用二进制搜索算法搜索指定值的指定字节数组。 在进行此调用之前，数组必须按照sort(byte[])方法进行排序
+（4）T[] copyOfRange(T[] original, int from,int to)：参数分别为要复制的数组，初始索引（包括），最终索引（可在源数组外）；该拷贝用的是浅拷贝，如果复制的是对象数组，则只是复制了对象的引用，并没有new每一个对象；因为该方法内部用了System.ayyarcopy(original, from, copy, 0, Math.min(original.length - from, newLength)),为浅拷贝
+（5） boolean equals(Object[] a, Object[] a2)：比较两个数组是否相等，可以是基本类型的数组，也可以是对象数组
+（6）void fill(long[] a, int fromIndex, int toIndex, long val)：对数组从起始索引到结束索引填充数据val，参数分别是要填充的数组、起始索引（包括）、结束索引（不包括）、填充的数据
+（7）byte[] copyOf(byte[] original, int newLength)：也是浅拷贝，不过初始索引固定从0开始，第二个参数是从0开始拷贝的长度
+（8） int hashCode(int[] a)：返回hashcode值，参数可以是任意类型的数组；
+（9）void sort(Object[] a)、void sort(T[] a, Comparator<? super T> c)：第一种是直接按照默认的升序排序，第二种可以通过重写compareTo()方法自定义排序方式；此外第一种排序还可以在后面加上void sort(Object[] a,int fromIndex, int toIndex)包括开始索引，不包括结束索引，只排序这个范围内的数据
+（10）String toString(int[] a)：返回该数组的字符串形式，例如：[1, 2, 3, 4, 5]；参数数组是任意类型的
+（11）void parallelSort(int[] a)：并行计算排序，内部原理是利用Fork/join对大数组进行拆分进行并行排序，比用一个单线程来计算大数组要高效得多；应用场景是需要排序得数组长度非常的大

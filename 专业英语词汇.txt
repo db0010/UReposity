@@ -1,0 +1,11 @@
+Overriding:重写	
+Overloading:重载
+Reflections：反射	
+Transaction:事务 mapper和DAO是一个意思就是：数据操作层
+increment:增加
+Aotomic:原子的
+Concurrent:并发
+Adder:加法器
+Auccumulator:累加器
+Fixed:固定的
+parallel:并行的
