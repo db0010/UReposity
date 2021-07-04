@@ -125,6 +125,12 @@
      3.mybaties的jar包及mybaties的依赖包
 
      4.mybaties与spring的整合包和数据库驱动包
+     
+   - 注意错误
+
+     - Maven里不配置下面的话，可能会导致资源加载错误问题
+
+       ![image-20210703210217675](D:\zuo_mian\java小知识\image\image-20210703210217675.png)
 
 2. 在resource目录下创建jdbc.properties配置文件
 
@@ -189,7 +195,16 @@
 5. MyBatis中的注解配置
 
    - @select,@insert,@update,@delete注解就对应xml配置中的元素一样，注解的参数是sql语句字符串，所有的注解都是用在DAO层类的方法上面
-   - @param注解，是用在DAO的接口参数里面，是根据名称找到传入的参数，注解的参数是数据库表对应字段的字符串
+
+   - @param注解，是用在DAO的接口参数里面，是根据名称找到传入的参数，注解的参数是数据库表对应字段的字符串；使用@Param注解的四种情况
+
+     - 当有多个（同名）参数时，可使用@param配置不同的名称
+     - 需要修改（指定）传入XML中的参数名称时；参数为基本数据类型和String类型时加上
+     - 当mapper.XML中使用了动态SQL时，就需要用@Param
+     - 当需要使用${}符时，${}有SQL注入问题，但是当传入的参数是表明个列名时必须使用${}，因此必须使用动态SQL来判断传入的${}是否为null和""，则必须使用@param传递这两种参数
+
+     > 参考网页：https://zhuanlan.zhihu.com/p/74853451
+
    - 简单的配置可以用注解配置，但是有些复杂的配置还是需要使用XMl配置
 
 6. MyBatis的关联映射
@@ -208,7 +223,7 @@
    - 使用的步骤
 
      ```java
-     //第0页，读5条数据
+     //第0行，读5条数据
      PageHelper.startPage(0,5);
      List<Teacher> teacherList=TeacherDao.findAll();
      PageInfo pageInfo=new PageInfo(teacherList);
@@ -250,14 +265,187 @@
       - 这里使用了装饰器模式；Cache为Component（抽象构件），PerpetualCache为ConcreteComponent（具体构件），其他的类都是ConcreteDecorator（具体装饰类）；只有PerpetualCache为Cache接口的实现类
       - 装饰器模式：动态的给一个对象增加一些额外的职责
 
+- 单独的MyBatis
+
+  - 配置文件例子
+
+    ```
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <!DOCTYPE configuration
+            PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+            "http://mybatis.org/dtd/mybatis-3-config.dtd">
+    <configuration>
+        <settings>
+            <setting name="logImpl" value="STDOUT_LOGGING"/>
+        </settings>
+        <environments default="development">
+            <environment id="development">
+                <transactionManager type="JDBC"/>
+                <dataSource type="POOLED">
+                    <property name="driver" value="com.mysql.jdbc.Driver"/>
+                    <property name="url" value="jdbc:mysql://localhost:3306/mybatis?characterEncoding=utf8&amp;useSSL=false&amp;serverTimezone=UTC&amp;rewriteBatchedStatements=true"/>
+                    <property name="username" value="root"/>
+                    <property name="password" value="12345678"/>
+                </dataSource>
+            </environment>
+            
+            <environment id="dev">
+                <transactionManager type="JDBC"/>
+                <dataSource type="POOLED">
+                    <property name="driver" value="com.mysql.jdbc.Driver"/>
+                    <property name="url" value="jdbc:mysql://localhost:3306/mybatis?characterEncoding=utf8&amp;useSSL=false&amp;serverTimezone=UTC&amp;rewriteBatchedStatements=true"/>
+                    <property name="username" value="root"/>
+                    <property name="password" value="12345678"/>
+                </dataSource>
+            </environment>
+        </environments>
+    
+        <mappers>
+            <mapper class="com.kuang.mapper.UserMapper"/>
+        </mappers>
+    </configuration>
+    
+    ```
+
+    
+
+  - Mybatis环境的配置
+
+    ```
+    <environments default="development">		//在MyBatis的多环境下通过引用id名称来使用；一个sqlSessionFactory只能使用一个environment，多个环境就配置多个environment标签
+      <environment id="development">
+        <transactionManager type="JDBC">	//JDBC的事务管理器是最常用的（另一个是MANAGED），MyBatis和Spring整个后不用配置了，会被Spring的事务管理器覆盖
+          <property name="..." value="..."/>	//这个可在MyBatis文档中的Settings部分查看全部配置
+        </transactionManager>
+        <dataSource type="POOLED">	//数据源有POOLED(池化连接，适用于并发web)、JDNI（适用于应用服务器）、UNPOOLED（无池）
+          <property name="driver" value="${driver}"/>
+          <property name="url" value="${url}"/>
+          <property name="username" value="${username}"/>
+          <property name="password" value="${password}"/>
+        </dataSource>
+      </environment>
+    </environments>
+    ```
+
+  - 映射配置；mapers标签配置，可以使用相对于类路径的资源引用，或完全限定资源定位符（包括 `file:///` 形式的 URL），或类名和包名等；
+
+    ```
+    <!-- 将包内的映射器接口实现全部注册为映射器 -->
+    <mappers>
+      <package name="org.mybatis.builder"/>	//这个适用于类比较多时，但是这个不能配置别名；设置别名可结合@Alisa
+    </mappers>
+    <!-- 使用映射器接口实现类的完全限定类名 -->
+    <mappers>
+      <mapper class="org.mybatis.builder.AuthorMapper"/>
+      <mapper class="org.mybatis.builder.BlogMapper"/>
+      <mapper class="org.mybatis.builder.PostMapper"/>
+    </mappers>
+    ```
+
+  - Java实体类属性与数据库表字段不相同问题；有两种解决方法；
+
+    - 一是在select语句中查询的数据库列名用as取个别名（对应JavaBean中的属性），这样返回的对象就可以完美的转化为JavaBean了
+
+      ```
+      <select id="getUserById" resultType="com.kuang.pojo.User">
+          select id,name,pwd as password from mybatis.user where id = #{id}
+      </select>
+      ```
+
+    - 二是使用resultmap标签；手动把对应的JavaBean和数据库字段对应起来
+
+      ```
+      <!--结果集映射-->
+      <resultMap id="UserMap" type="User">
+          <!--column数据库中的字段，property实体类中的属性-->
+          <result column="id" property="id"/>
+          <result column="name" property="name"/>
+          <result column="pwd" property="password"/>
+      </resultMap>
+      
+      <select id="getUserById" resultMap="UserMap">
+          select * from mybatis.user where id = #{id}
+      </select>
+      ```
+
+    - map方法；上面的解决办法都是针对的select语句，通过在返回时设置别名；当遇见传入参数作为set子句的遍历时就无法解决，需要用把所有参数封装进map中，mybatis可以直接获取map的键（用#{key}）
+
+      ```
+        Map map=new HashMap<String,Object>();
+              map.put("id","2");
+              map.put("name","谢磊");
+              map.put("pwd","666");
+              userMapper.updateUser(map);
+      ```
+
+      
+
+  - Mapper.xml编写的注意事项
+
+  ```
+  public interface UserMapper {
+      List<User> getUserList();	//这里的返回值为列表，但是在下面的mapper中返回类型为User，不是ArrayList
+  }
+  //xml中的sql语句
+   <select id="getUserList" resultType="com.db.mybatisTest.bean.User">
+          select * from user
+    </select>
+  ```
+
+  - 模糊查询；有拼接字符串和使用concat()两种方法
+
+    ```
+    //拼接字符串
+    <select id="findUserLike" resultType="com.db.mybatisTest.bean.User">
+            select id,name,pwd as password from user where name like "%"#{name}
+        </select
+    //使用concat()
+    <select id="findUserLike" resultType="com.db.mybatisTest.bean.User">
+            select id,name,pwd as password from user where name like concat("%",#{name})
+        </select
+    ```
+
+    
+
 ### 三、继承Log4j日志框架
 
 1. Log4j中的三个组件：Logger（记录器）、Appender（输出端）、Layout（布局）；三个的作用为记录器为日志的级别，输出端为输出的地方，布局为输出的格式
+
 2. 在pom.xml中导入依赖包
    - log4j
    - slf4j-api
    - slf4j-log4j12
-3. Log4j的配置文件可以是XMl文件形式，也可以是log4j.properties形式
+   
+3. Log4j的配置文件可以是XMl文件形式，也可以是log4j.properties形式；下面是Log4j在MyBatis中的日志配置
+
+   ```
+   #将等级为DEBUG的日志信息输出到console和file这两个目的地，console和file的定义在下面的代码
+   log4j.rootLogger=DEBUG,console,file
+   
+   #控制台输出的相关设置
+   log4j.appender.console = org.apache.log4j.ConsoleAppender
+   log4j.appender.console.Target = System.out
+   log4j.appender.console.Threshold=DEBUG
+   log4j.appender.console.layout = org.apache.log4j.PatternLayout
+   log4j.appender.console.layout.ConversionPattern=[%c]-%m%n
+   
+   #文件输出的相关设置
+   log4j.appender.file = org.apache.log4j.RollingFileAppender
+   log4j.appender.file.File=./log/kuang.log
+   log4j.appender.file.MaxFileSize=10mb
+   log4j.appender.file.Threshold=DEBUG
+   log4j.appender.file.layout=org.apache.log4j.PatternLayout
+   log4j.appender.file.layout.ConversionPattern=[%p][%d{yy-MM-dd}][%c]%m%n
+   
+   #日志输出级别
+   log4j.logger.org.mybatis=DEBUG
+   log4j.logger.java.sql=DEBUG
+   log4j.logger.java.sql.Statement=DEBUG
+   log4j.logger.java.sql.ResultSet=DEBUG
+   log4j.logger.java.sql.PreparedStatement=DEBUG
+   ```
+
+   
 
 ### 四、集成JUnit测试框架
 
@@ -303,13 +491,13 @@
 
 3. spring传播行为
 
-   当事务方法调用另一个被@Transactional注解的类或方法时，可能继续在现有事务中运行，也可能新开一个事务并在自己的事务中运行等；可以在@Trasactional的属性propagation指定事务的传播行为
+   当事务方法调用另一个被@Transactional注解的类或方法时，可能继续在现有事务中运行，也可能新开一个事务并在自己的事务中运行等；可以在@Trasactional的属性propagation指定事务的传播行为（下面加粗的是最常用的三种行为）
 
-   - propagation_requies_new：新建事务，如果当前存在事务，则把当前事务挂起
-   - propagation_required：如果当前没有事务，就新建一个事务，如果已经存在一个事务，则加入到这个事务中
+   - **propagation_requies_new：新建事务，如果当前存在事务，则把当前事务挂起；新事务使用独立的隔离级别和锁**
+   - **propagation_required：如果当前没有事务，就新建一个事务，如果已经存在一个事务，则加入到这个事务中；这是Spring默认的传播行为**
    - propagation_supports：支持当前事务，如果当前没有事务则以非事务的方式执行
    - propagation_mandatory：强制的；使用当前事务，如果当前没有事务则抛出异常
-   - propagation_nested：嵌套的；如果当前存在事务，则在当前事务中嵌套执行，没有事务则新建一个事务
+   - **propagation_nested：嵌套的；如果当前存在事务，则在当前事务中嵌套执行，没有事务则新建一个事务；新事务沿用之前事务的隔离级别和锁**
    - propagation_not_supports：以非事务方式执行，如果当前存在事务，就把当前事务挂起
    - propagation_never：以非事务方式执行，如果存在事务，则抛出异常
 
@@ -318,6 +506,19 @@
    还可以通过timeout属性设置事务的过期时间，readOnly属性指定当前事务是只读事务，rollbackFor（noRollbackFor）指定哪个或那些异常可以引起事务回滚
 
    #### Spring的API设计很不错，基本上根据英文翻译就能知道作用:Required:必须的。说明必须要有事物，没有就新建事物。supports:支持。说明仅仅是支持事务，没有事务就非事务方式执行。mandatory:强制的。说明一定要有事务，没有事务就抛出异常。required_new:必须新建事物。如果当前存在事物就挂起。not_supported:不支持事物，如果存在事物就挂起。never:绝不有事务。如果存在事物就抛出异常
+   
+   - spring事务@Transactional失效问题
+   
+     - 自调用问题：类自身方法之间的调用，并不能够每次都产生新的事务；因为Spring事务的原理是由Spring事务管理器管理的，应用了AOP，AOP的原理是动态代理，类的调用是类自身的调用而不是代理对象的调用，那么就不会产生AOP，那么事务管理器就不会创建新的事务；
+   
+       - 解决办法：一是可以由另外一个Service去调用另一个Service；二是从IOC容器中获取代理对象去启用AOP
+   
+         ```
+         //从IOC容器中获取代理对象
+         UserService userservice=applicationContext.getBean(Userservice.class);
+         ```
+   
+         
 
 ### 六、SpringMVC原理
 
@@ -330,4 +531,4 @@
 - HandlerAdapter（处理适配器）：HandlerAdapter允许多个实例，把处理器包装成适配器，从而可以从支持更多类型的处理器，这是适配器模式的应用；SimpleControllerHandlerAdapter是HandlerAdapter的实现类之一，是所有Controller实现类的适配器，Controller接口只有一个handleRequest()方法，返回值是ModelAndView
 - Handler（处理器）：也叫做Controller
 - ViewResolver（视图解析器）：是用来把逻辑视图解析为物理视图的；首先是把目标方法的返回类型String,ModelMap,ModelAndView,View都转换成ModelAndView；然后把其中的View对象进行解析，把逻辑视图View解析为物理视图View对象；最后调用物理视图对象的render（）方法进行视图渲染，得到响应结果
-- Virw（视图）：可以是Jsp、Excell、JFreeChart等
+- View（视图）：可以是Jsp、Excell、JFreeChart等

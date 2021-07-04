@@ -210,10 +210,10 @@ JVM初始化步骤
 
 （8）类加载器的分类
 
-> ![å¾ç](http://mmbiz.qpic.cn/mmbiz_jpg/eZzl4LXykQxqialtFyQIAA8Mp2SfxSalH4LhZBYWxvUJiaiaTqAibgfFf0JKsLFZRuV59DgfSiazibKZyp4GCVic4GxLQ/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+> ![](D:\zuo_mian\java小知识\image\640.png)
 
 - HotSpot虚拟机的启动类加载器（Bootstrap ClassLodaer）是用c语言写的，其他的虚拟机是用java写的；用c语言写的就不能够直接调用；所有java.*的java类都是该类加载器加载的；负责加载存放在JDK\jre\lib
-- 扩展类加载器（ExtClassLoader）是加载javax.*的类库；它负责加载DK\jre\lib\ext目录中
+- 扩展类加载器（ExtClassLoader）是加载javax.*的类库；它负责加载JDK\jre\lib\ext目录中
 - 应用类加载器（system classloader）是加载用户类的；通过ClassLoader.getSystemClassLoader()来获取它，它负责加载用户类路径（ClassPath）CLASSPATH/-Djava.class.path所指定的类和jar包的装入工作
 - 上图中的箭头继承关系，是组合关系，通过getParent()方法获取上级类加载器；通过开发人员可以通过继承java.lang.ClassLoader类的方式实现自己的类加载器，从而进行动态加载class文件，以满足一些特殊的需求，这体现java动态实时类装入特性
 
@@ -341,7 +341,7 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
 
 （2）Tracing（标记-清除算法算法）
 
-> ![img](https://upload-images.jianshu.io/upload_images/3789193-05ac8d99f632c6c7.png?imageMogr2/auto-orient/strip|imageView2/2/w/485/format/webp)
+> ![](D:\zuo_mian\java小知识\image\3789193-05ac8d99f632c6c7.png)
 
 - 分为标记和清除两个阶段，标记阶段就是使用根搜索算法的过程，标记的存活对象；清除的是未标记的对象
 - 优点：不需要进行对象的移动；特点是仅对未标记的对象清理，在存活对象较多的时候极为高效
@@ -351,7 +351,7 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
 
 （3）Compacting（标记-整理算法）
 
-> ![img](https://upload-images.jianshu.io/upload_images/3789193-27c645c7700f687b.png?imageMogr2/auto-orient/strip|imageView2/2/w/511/format/webp)
+> ![](D:\zuo_mian\java小知识\image\3789193-27c645c7700f687b.png)
 
 - 大体过程还是标记-清除；只是在清理垃圾之前会把存活的内存向一端移动，然后让除了这些对象之外的内存都清理掉；使用该算法一般增加句柄和句柄表
 - 优点：
@@ -361,7 +361,7 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
 
 （4）Copying（复制算法）
 
-> ![img](https://upload-images.jianshu.io/upload_images/3789193-f3564647800ab93c.png?imageMogr2/auto-orient/strip|imageView2/2/w/490/format/webp)
+> ![](D:\zuo_mian\java小知识\image\3789193-f3564647800ab93c.png)
 
 - 该算法是为了克服句柄的开销和解决内存碎片的问题；把堆内存分为两块，先只用一块，这块用完了就把这块的存活对象那个复制到另一块上去，再把该块的内存全部清理掉；复制算法适用于新生代（短生存周期的对象），老年代（长生存周期的对象）中的对象存活周期长，就会执行较多的复制操作，效率会变低；老年代都是使用的标记-整理算法
 
@@ -392,7 +392,7 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
   5. 并发清理(Concurrent sweeping)
   6. 并发重置(Concurrent reset)
 
-  ![img](https://uploadfiles.nowcoder.com/images/20200502/9374535_1588428365082_2D3DED829E7D27716B630299E48DDD87)
+  ![](D:\zuo_mian\java小知识\image\9374535_1588428365082_2D3DED829E7D27716B630299E48DDD87.png)
 
   1. **初始标记：**在这个阶段，需要虚拟机停顿正在执行的任务，官方的叫法STW(Stop The Word)。这个过程从垃圾回收的"根对象"开始，只扫描到能够和"根对象"直接关联的对象，并作标记。所以**这个过程虽然暂停了整个JVM，但是很快就完成了**。
   2. **并发标记：**这个阶段紧随初始标记阶段，在初始标记的基础上继续向下追溯标记。并发标记阶段，***应用程序的线程和并发标记的线程并发执行，所以\******用户不会感受到停顿\******。\***

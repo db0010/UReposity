@@ -196,3 +196,36 @@ JDBC应用步骤：
 
 -   PreparedStatement 接口继承 Statement ，  PreparedStatement 实例包含已编译的 SQL 语句， 所以其执行速度要快于 Statement 对象。 Statement为一条Sql语句生成执行计划， 如果要执行两条sql语句 
   **select colume from table where colume=1;select colume from table where colume=2;** 会生成两个执行计划 一千个查询就生成一千个执行计划！ PreparedStatement用于使用绑定变量重用执行计划 **select colume from table where colume=:x;** 通过set不同数据只需要生成一次执行计划，可以重用
+
+四、JDBC数据类型
+
+- 我们使用jdbc在对数据操作的时候我们需要知道数据库里的数据类型和我们的java数据类型是如何对应的,这样存取的时候才不会出现不必要的错误,
+
+  我们就拿MySQL为例
+
+  | JDBC**类型名称** | **显示长度** | **数据库类型**            | **JAVA类型**             | **JDBC类型索引(int)** | **描述** |
+  | ---------------- | ------------ | ------------------------- | ------------------------ | --------------------- | -------- |
+  |                  |              |                           |                          |                       |          |
+  | **VARCHAR**      | **L+N**      | **VARCHAR**               | **java.lang.String**     | **12**                |          |
+  | **CHAR**         | **N**        | **CHAR**                  | **java.lang.String**     | **1**                 |          |
+  | **BLOB**         | **L+N**      | **BLOB**                  | **java.lang.byte[]**     | **-4**                |          |
+  | **TEXT**         | **65535**    | **VARCHAR**               | **java.lang.String**     | **-1**                |          |
+  |                  |              |                           |                          |                       |          |
+  | **INTEGER**      | **4**        | **INTEGER UNSIGNED**      | **java.lang.Long**       | **4**                 |          |
+  | **TINYINT**      | **3**        | **TINYINT UNSIGNED**      | **java.lang.Integer**    | **-6**                |          |
+  | **SMALLINT**     | **5**        | **SMALLINT UNSIGNED**     | **java.lang.Integer**    | **5**                 |          |
+  | **MEDIUMINT**    | **8**        | **MEDIUMINT UNSIGNED**    | **java.lang.Integer**    | **4**                 |          |
+  | **BIT**          | **1**        | **BIT**                   | **java.lang.Boolean**    | **-7**                |          |
+  | **BIGINT**       | **20**       | **BIGINT UNSIGNED**       | **java.math.BigInteger** | **-5**                |          |
+  | **FLOAT**        | **4+8**      | **FLOAT**                 | **java.lang.Float**      | **7**                 |          |
+  | **DOUBLE**       | **22**       | **DOUBLE**                | **java.lang.Double**     | **8**                 |          |
+  | **DECIMAL**      | **11**       | **DECIMAL**               | **java.math.BigDecimal** | **3**                 |          |
+  | **BOOLEAN**      | **1**        | **同TINYINT**             |                          |                       |          |
+  |                  |              |                           |                          |                       |          |
+  | **ID**           | **11**       | **PK (INTEGER UNSIGNED)** | **java.lang.Long**       | **4**                 |          |
+  |                  |              |                           |                          |                       |          |
+  | **DATE**         | **10**       | **DATE**                  | **java.sql.Date**        | **91**                |          |
+  | **TIME**         | **8**        | **TIME**                  | **java.sql.Time**        | **92**                |          |
+  | **DATETIME**     | **19**       | **DATETIME**              | **java.sql.Timestamp**   | **93**                |          |
+  | **TIMESTAMP**    | **19**       | **TIMESTAMP**             | **java.sql.Timestamp**   | **93**                |          |
+  | **YEAR**         | **4**        | **YEAR**                  | **java.sql.Date**        | **91**                |          |
