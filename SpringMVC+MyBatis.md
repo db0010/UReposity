@@ -207,14 +207,22 @@
 
    - 简单的配置可以用注解配置，但是有些复杂的配置还是需要使用XMl配置
 
-6. MyBatis的关联映射
+6. MyBatis的关联映射（MyBatis重点和难点）
 
    - 一对一：比如一个人只能有一张对应的身份证，需要在人这个类中定义身份证类的对象，在resultMap元素需要多配置个<association>元素作为子元素，子元素也需要配置该对象的属性，如<id>,<result property="" column="">；还需要配置方法引用地址，javaType属性这些
    - 一对多：在“一”所在类的mapper.xml中配置<collection javaType/>,还需要在“一”所在类添加“多”类的对象集合属性；“多”类配置就更一对一类的配置一样，用<association>元素配置
    - 多对对：两个类都添加另一个类的对象集合，并且在mapper.xml配置文件中用<collection>配置
    - 可以在<collection fetchType="lazy">，表示使用懒加载方式加载数据，这需要在mybatis-config.xml配置文件中配置开启懒加载
 
-7. RowBounds分页类与分页插件PageHelper
+7. RowBounds分页类与分页插件PageHelper；使用PageHelper时可以查看他的官网文档
+
+   - RowBounds类是直接使用的SqlSession的原生sql方法，其中有个select方法传入RowBounds对象
+
+     ```
+     RowBounds rowBounds=new RowBound(int statIndex,int pageSize);
+     ```
+
+     
 
    - RowBounds类使用的时候需要在DAO类中的方法的参数上作为一个对象参数，在使用的时候，new一个RowBounds的对象传给DAO的方法，参数（0，5）表示从第0行开始读取数据，读5条记录；这种分页是逻辑分页，是在数据返回全部数据的基础上只显示设定的多行数据
 
@@ -233,39 +241,48 @@
 
 8. MyBatis的缓存机制
 
-   1. 一级查询缓存；SqlSession级别的缓存（作用域是SqlSession范围）；每个SqlSession对象都有一个HashMap对象，HashMap把存储对象的id作为Key，对象作为value
+   1. 一级查询缓存；SqlSession级别的缓存（作用域是SqlSession范围），也叫会话缓存和本地缓存，localCache；
 
       > ![img](https://awps-assets.meituan.net/mit-x/blog-images-bundle-2018a/bb851700.png)
 
       - 一个Session会话创建一个SqlSession对象，一个SqlSession对象创建一个Executor对象，Executor对象有一个PerpetualCache对象，这是一级缓存
       - 在一个Session周期内，如果没有刷新缓存的操作发生，比如调用clearCache()方法或者执行DML操作（insert，update，Delete），那么下一次查询的数据是PerpetualCache缓存里面有的，那么就从缓存里面获取数据
       - SqlSession的close()方法是释放整个PerpetualCache缓存，后面也是不可继续使用的；clearCache()方法是清楚缓存中的数据，后面还可以继续使用缓存
-
-   2. 创建SqlSession对象的过程
-
+   - 每当一个新 session 被创建，MyBatis 就会创建一个与之相关联的本地缓存。任何在 session 执行过的查询结果都会被保存在本地缓存中，所以，当再次执行参数相同的相同查询时，就不需要实际查询数据库了。本地缓存将会在做出修改、事务提交或回滚，以及关闭 session 时清空
+   
+2. 创建SqlSession对象的过程
+   
       ```java
       SqlSessionFactory sqlsessionFacotry=sqlSessionFactoryBean.getObject();
       SqlSession sqlSession=sqlSessionFactory.openSession();
       //后面的调用teacherDao接口的方法都是用下行通过sqlSession获取的teacherDao
       TeacherDao teacherDao=sqlSession.getMapper(TeacherDao.class);
-      ```
-
-   3. 二级查询缓存；Mapper级别的缓存（是以namespace为单位的）；二级查询缓存默认是不开启的，开启需要在ApplicationContex.xml,mybatis-config.xml,以及每个mapper.xml文件中都要配置开启二级查询缓存
-
-      - 每个mapper都有一个二级缓存，其中可能有多个mapper的缓存是指向同一个缓存的引用（mapper标签的cache-ref=""属性来配置）；这样在其中一个mapper的数据更新之后，另一个mapper在查询原来的数据，那就会读取到脏数据；因此使用二级缓存需谨慎
+   ```
+   
+3. 二级查询缓存；Mapper级别的缓存（是以namespace为单位的），也叫second level cache；二级查询缓存默认是不开启的，开启需要在ApplicationContex.xml,mybatis-config.xml,以及每个mapper.xml文件中都要配置开启二级查询缓存
+   
+      - 每个mapper都有一个二级缓存，其中可能有多个mapper的缓存是指向同一个缓存的引用（mapper标签的cache-ref=""属性来配置）；
+   - 二级缓存是事务性的。这意味着，当 SqlSession 完成并提交时，或是完成并回滚，但没有执行 flushCache=true 的 insert/delete/update 语句时，缓存会获得更新这样在其中一个mapper的数据更新之后，另一个mapper在查询原来的数据，那就会读取到脏数据；因此使用二级缓存需谨慎
       - 使用一级缓存在更新数据之后，缓存中的数据会清空，开启二级缓存之后就先会去二级缓存里面获取相应的数据
 
-   4. MyBatis缓存原理
-
+   4. MyBatis缓存原理；在mapper.xml中用cache标签、或者在mapper标签设置了cache-ref属性那么就表示开启了二级缓存；
+   
       > ![img](https://awps-assets.meituan.net/mit-x/blog-images-bundle-2018a/28399eba.png)
-      >
+   >
       > ![img](https://awps-assets.meituan.net/mit-x/blog-images-bundle-2018a/cdb21712.jpg)
-
-      - 二级缓存开启之后(把cacheEnable=true)，查找的顺序是二级缓存->一级缓存->数据库
+   
+      - 二级缓存（全局缓存）开启之后，查找的顺序是二级缓存->一级缓存->数据库
       - 这里使用了装饰器模式；Cache为Component（抽象构件），PerpetualCache为ConcreteComponent（具体构件），其他的类都是ConcreteDecorator（具体装饰类）；只有PerpetualCache为Cache接口的实现类
       - 装饰器模式：动态的给一个对象增加一些额外的职责
 
 - 单独的MyBatis
+
+  - 生命周期与作用域；设置作用域就是设置定义类对象的位置；作用域出现问题会出现并发问题
+
+    - SqlSessionFactoryBuilder：使用建造者模式创建SqlSession工厂，只需要一个工厂就需要把建造者销毁，因此作用域是在方法作用域（设置为方法里的局部变量）
+    - SqlSessionFactory：整个应用的SqlSession都需要该工厂来创建，因此定义的工厂作用域应设置为应用作用域，可以通过设置单例模式和静态单例模式
+    - SqlSession：一个会话对于一个SqlSession，因此作用域为方法作用域或者请求作用域，例如设置为跟Servlet中的Request请求一个作用域；这个需要显示的关闭（最好用try-with-resource语法）
+    - Mapper：一个SqlSession对应一个或者多个Mapper，Mapper的作用域应设置为方法作用域；这个不需要显示的关闭
 
   - 配置文件例子
 
@@ -405,7 +422,11 @@
         </select
     ```
 
-    
+  - Mybatis在insert记录的时候可以使用useGeneratedKeys参数为true，keyProperty="id"；前提是数据库表中id字段设置为了auto_increment属性，不然MyBatis执行会报错；当有很多类都需要设置自动主键自增时，可以在environment的配置文件中配置Settings属性的useGeneratedKeys，这个作用域就是全局；如果局部和全局都设置了，那么依局部的配置
+
+  - 易错点：
+
+    - 在mybatisconfig.xml中配置Environment时，每中属性的上下顺序不能错，不然会报错，按着他提示的顺序修改顺序就好了
 
 ### 三、继承Log4j日志框架
 

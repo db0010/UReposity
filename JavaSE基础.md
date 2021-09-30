@@ -395,6 +395,12 @@ enum Color{
 
   3. 而声明为Error的，则属于严重错误，如系统崩溃、虚拟机错误、动态链接失败等，这些错误无法恢复或者不可能捕捉，将导致应用程序中断，Error不需要捕捉。
 
+- 捕获(catch)异常之后，后面的代码是否还会继续执行的问题；借鉴：https://zhuanlan.zhihu.com/p/63157788
+
+  - 凡是有异常的地方，需要有处理异常的地方。
+  - 只要异常被处理，异常处理之后的代码都可以正常执行。有catch{}
+  - 异常被往上抛出，则抛出异常之后的代码将不被执行。有throw 无catch
+
 - 1、throws出现在方法头，throw出现在方法体 2、throws表示出现异常的一种可能性，并不一定会发生异常；throw则是抛出了异常，执行throw则一定抛出了某种异常。
 
 - Exception中除了RuntimeException及其子类，其他的异常都需要捕获
@@ -630,6 +636,16 @@ enum Color{
 
 - commons-logging+log4j是配套使用的，slf4j+logback也是配套使用的，commons logging和slf4j都是日志接口，log4j和logback就是日志
 
+#### 面试常问异常
+
+- IllegalMonitorStateException：监视器状态异常；发生在wait、notify等方法没有使用在同步块时、
+  - monitorenter ： 
+    每个对象有一个监视器锁（monitor）。当monitor被占用时就会处于锁定状态，线程执行monitorenter指令时尝试获取monitor的所有权，过程如下： 
+    1、如果monitor的进入数为0，则该线程进入monitor，然后将进入数设置为1，该线程即为monitor的所有者。 
+    2、如果线程已经占有该monitor，只是重新进入，则进入monitor的进入数加1. 
+    3.如果其他线程已经占用了monitor，则该线程进入阻塞状态，直到monitor的进入数为0，再重新尝试获取monitor的所有权
+- concurrentModificationException：并发修改异常；发生在多线程程序中不当的使用了线程不安全的集合等
+
 ### 六、注解
 
 - 使用注解：注解可以使用在类、方法、字段、构造方法上，注解是一种用作标注的“元数据”，注释是会自动被编译器跳过的，而注解是会被编译器编译进class文件的；注解可以配置参数，没有指定配置的参数使用默认值
@@ -863,6 +879,8 @@ enum Color{
 
   如public Double(String s)，public Double(double value)
 
+- 所有封装类型都是final类
+
 - 基本类型与封装类型的主动转换（拆箱与装箱）
 
   - 基本类型转为封装类型（装箱）
@@ -1031,6 +1049,48 @@ enum Color{
 
     ![image-20210510142120404](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210510142120404.png)
 
+  - 让字符串重复输出方法repeat(int count);参数count表示让count重复的次数，1返回本身，0返回空串；JDK11才有的方法，可能会抛出参数不合法异常，参数为负数时抛出该异常
+
+    ```
+    public static void main(String[] args) {
+           String str="abcdea";
+            String repeat = str.repeat(2);
+            System.out.println(repeat); //输出结果为abcdeaabcdea
+        }
+    ```
+
+  - String有char[]、八种基本数据类型的valueOf()方法来创建一个字符串；valueOf(char[] chars)是调用的new String(char[] chars)方法创建一个字符串，其他是valueOf(int i) 调用的Integer.toString(i)来返回值为i的字符串，字符串的大小是根据传入的i值计算的，其他基本类型类似，只有char类型有些不一样
+
+  - intern()方法；把调用该方法的字符串加入字符串常量池中（JDK8之后字符串常量池在元空间中，没有永久代了，元空间是方法区的一种实现，其他虚拟机可能不是用元空间来实现方法区）；
+
+  - 面试题
+
+    ```java
+    /**
+     * 将字符串str中的"cde"替换为"edc"
+     */
+    public class t {
+        public static void main(String[] args) {
+           String str="abcdea";
+           charArray(str);
+           replace(str);
+        }
+        static void charArray(String str){
+            char[] chars = str.toCharArray();
+            chars[2]='e';
+            chars[4]='c';
+            System.out.println(chars);
+        }
+        static void replace(String str){
+            //replace的返回值的字符串才是替换后的，源字符串是没有改变的
+            String replace = str.replace("cde", "edc");
+            System.out.println(replace);
+        }
+    }
+    ```
+
+    
+
 - 八大基本数据类型转化为字符串类型
 
   - 可以通过+链接一个""空串
@@ -1094,9 +1154,16 @@ enum Color{
 - java.util.Random
 
   - Random()：构造一个新的随机数生成器
-  - int nextInt(int n)：返回一个0~n-1之间的随机数
-
-
+  
+  - int nextInt(int n)：返回一个[0~n-1]之间的随机数
+  
+    - 随机生成一个四位数整数
+  
+      ```java
+      new Random().nextInt(9000)+1000//[0,9000)+1000=[1000,10000)
+      ```
+  
+      
 
 ### 十二、运算符
 
@@ -1779,3 +1846,22 @@ enum Color{
   | :set nonu                                                    | 与 set nu 相反，为取消行号！                                 |
 
 ![image-20210607113637450](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210607113637450.png)
+
+### 二十、正则表达式
+
+- X*,X+表示0或多个X，1或多个X
+
+  - 比如  [1-9] [0-9]+是大于等于10的整数；[1-9]+是正整数，-[1-9]表示负整数
+
+    ```java
+     Pattern pattern=Pattern.compile("[1-9]+");
+            String[] s={"22","2","3","-1","89","222r"};
+            for (String s1 : s) {
+                Matcher matcher = pattern.matcher(s1);
+                if(matcher.matches()){
+                    System.out.println(s1);//输出22 2 3 89
+                }
+            }
+    ```
+
+    

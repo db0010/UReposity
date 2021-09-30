@@ -55,7 +55,7 @@ http://www.springframework.org/schema/beans/spring-beans.xsd">
 ​		autodetect：通过bean的内省机制来决定使用byType方式还是constructor方式
 ​		default：由上级标签的default-autowire属性确定
 ​		no ： 默认值，不进行自动装配
-​	3.通过@Autowired注解自动装配：在People类里面定义其他类的对象的时候使用
+​	3.通过@Autowired注解自动装配：在People类里面定义其他类的对象的时候使用；默认是根据类型匹配的，需要按照名称匹配需要用到Qualifier注解
 
 ​		这种方法最简便的，既不用写set方法，也不用property标签和bean的autowire属性
 
@@ -301,4 +301,426 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
 2. 在Servlet-mapping种是dispatcher的映射到“/”，即处理所有的Servlet；
 3. 在启动Sertvlet容器之后，Servlet首先会加载DispatcherServlet到容器之中；然后根据Spring所用的IOC容器的类型，XML、纯java这两种中的一种来创建IOC容器，接着加载所有的Bean，并将IOC容器绑定在ServletContext上；
 4. DispatcherServlet持有IOC容器里面的@Controller的所有Bean，当DispatcherServlet收到Http请求时，Controller配置的url路径会把请求和参数传递到指定的方法；并根据返回的ModelAndView决定如何渲染页面；渲染页面的时候是用的ViewEngined引擎
-5. 
+
+
+
+### 三、原理解析
+
+- @AutoWired注解原理
+  - 在IOC容器启动为属性赋值的时候，遇到@AutoWired注解，会用后置处理器机制来创建属性的实例，然后利用反射机制将实例化好的属性赋值到对象上
+
+
+
+# 四、Spring总结
+
+## Spring
+
+### SpringIOC
+
+- Bean的生命周期；涉及的注解有@PostConstrust、@PreDestory、@Bean
+
+  - 下面还可以继承BeanPostProcessor（后置处理器）接口，对所有Bean生效，其他接口对单个Bean生效，分为PostProcessBeforeInitialization预初始化方法和PostProcessAfterInitialization后初始化方法
+
+  ```
+  @Component
+  public class BussinessPerson implements Person, BeanNameAware, BeanFactoryAware, ApplicationContextAware, InitializingBean, DisposableBean {
+      Animal animal = null;
+  
+      @Override
+      public void service() {
+          this.animal.use();
+      }
+  
+      @Override
+      @Autowired
+      @Qualifier("dog")
+      public void setAnlimal(Animal anlimal) {
+          System.out.println("延迟依赖注入");
+          this.animal = anlimal;
+      }
+  
+      @Override
+      public void setBeanName(String s) {
+          System.out.println("【" + this.getClass().getSimpleName() + "】调用BeanNameAware的setName");
+      }
+  
+      @Override
+      public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+          System.out.println("【" + this.getClass().getSimpleName() + "】调用BeanFactoryAware的setBeanFactory");
+      }
+  
+      @Override
+      public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+          System.out.println("【" + this.getClass().getSimpleName() + "】调用ApplicationContextAware的setApplicationContext");
+      }
+  
+      @Override
+      public void afterPropertiesSet() throws Exception {
+          System.out.println("【" + this.getClass().getSimpleName() + "】调用InitializingAware的afterPropertiesSet");
+      }
+  
+      @PostConstruct
+      public void init() {
+          System.out.println("【" + this.getClass().getSimpleName() + "】调用注解@PostConstruct定义的自定义初始化方法");
+      }
+  
+      @PreDestroy
+      public void destroy1() {
+          System.out.println("【" + this.getClass().getSimpleName() + "】调用注解@PreDestroy定义的自定义销毁方法");
+      }
+  
+      @Override
+      public void destroy() throws Exception {
+          System.out.println("【" + this.getClass().getSimpleName() + "】DisposableBean方法");
+      }
+  }
+  
+  ```
+
+  
+
+  ```
+  延迟依赖注入
+  【BussinessPerson】调用BeanNameAware的setName
+  【BussinessPerson】调用BeanFactoryAware的setBeanFactory
+  【BussinessPerson】调用ApplicationContextAware的setApplicationContext
+  【BussinessPerson】调用注解@PostConstruct定义的自定义初始化方法
+  【BussinessPerson】调用InitializingAware的afterPropertiesSet
+  2021-07-28 14:42:51.488  INFO 1484 --- [           main] com.db.demo.DemoApplicationTests         : Started DemoApplicationTests in 1.487 seconds (JVM running for 2.302)
+  
+  before
+  用户名：代彬
+  密码：123456
+  AfterReturning
+  after
+  
+  【BussinessPerson】调用注解@PreDestroy定义的自定义销毁方法
+  【BussinessPerson】DisposableBean方法
+  
+  Process finished with exit code 0
+  
+  ```
+
+  ![在这里插入图片描述](https://img-blog.csdnimg.cn/20201028180446251.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80MzI0NDY5OA==,size_16,color_FFFFFF,t_70#pic_center)
+
+### SpringAOP
+
+- springBoot中使用的注解有@Before、@After、@Around、@AfterThrowAble、@AfterReturn、@Aspect、@Pointcut、
+
+  - 切面；多个切面时，多个切面在连接点的输出顺序是混乱的，需要在切面上加@Order(值表示优先级)来控制输出顺序
+
+    ```
+    @Aspect
+    @Component
+    @Order(1)
+    public class MyAspect {
+        @Before("pointCut()")
+        public void before() {
+            System.out.println("before");
+        }
+    
+        @After("pointCut()")
+        public void after() {
+            System.out.println("after");
+        }
+    
+        @AfterThrowing("pointCut()")
+        public void AfterThrowing() {
+            System.out.println("AfterThrowing");
+        }
+    
+        @AfterReturning("pointCut()")
+        public void AfterReturning() {
+            System.out.println("AfterReturning");
+        }
+    
+        @Pointcut("execution(* com.db.demo.aop.UserServiceImpl.*(..))")
+        public void pointCut() { }
+    }
+    ```
+
+  - 连接点
+
+    ```
+    @Service
+    public class UserServiceImpl implements UserService{
+    
+    
+        public void printUser(User user) {
+            if (user == null) {
+                throw new RuntimeException("检查用户参数是否为空......");
+            }
+            System.out.println("用户名：" + user.getName());
+            System.out.println("密码：" + user.getPassword());
+        }
+    }
+    ```
+
+- Spring的AOP默认是使用的CGLIB动态代理；当配置spring.aop.proxy-target-class为false后，通过判断被代理类是否有接口来决定是否使用JDK动态代理
+
+- 动态代理有JDK代理和CGLIB代理，以及两者的区别
+
+  - JDK代理需要实现接口，CGLIB代理可以不实现接口；因为JDK代理获取代理对象是通过继承Proxy类，因为Java是单继承的，不能通过继承其他类来与代理类关联起来，只能实现接口；CGLIB是针对类实现代理（JDK是针对接口），对指定的类生成一个子类，覆盖其中的方法
+  - java动态代理是利用反射机制生成一个实现代理接口（代理接口为被代理类所实现的接口）的匿名类，在调用具体方法前调用InvokeHandler来处理。cglib动态代理是利用asm开源包，对代理对象类的class文件加载进来，通过修改其字节码生成子类（继承代理类）来处理
+  - JDK1.7之后JDK代理的效率要高于CGLIB
+
+  
+
+### Spring注解
+
+- @RequestParam 和 @PathVariable 注解是用于从request中接收请求的，两个都可以接收参数，关键点不同的是@RequestParam 是从request里面拿取值，而 @PathVariable 是从一个URI模板里面来填充
+
+  http://localhost:8080/springmvc/hello/101?param1=10&param2=20
+
+  根据上面的这个URL，你可以用这样的方式来进行获取
+
+  public String getDetails(
+      @RequestParam(value="param1", required=true) String param1,
+          @RequestParam(value="param2", required=false) String param2){
+
+  @RequestParam 支持下面四种参数
+
+      defaultValue 如果本次请求没有携带这个参数，或者参数为空，那么就会启用默认值
+      name 绑定本次参数的名称，要跟URL上面的一样
+      required 这个参数是不是必须的
+      value 跟name一样的作用，是name属性的一个别名
+
+  ![image-20210802145921379](D:\db\笔记\image\image-20210802145921379.png)
+
+  - @PathVariable
+
+  这个注解能够识别URL里面的一个模板，我们看下面的一个URL
+
+  http://localhost:8080/springmvc/hello/101?param1=10&param2=20
+
+  上面的一个url你可以这样写：
+
+  @RequestMapping("/hello/{id}")
+      public String getDetails(@PathVariable(value="id") String id,
+      @RequestParam(value="param1", required=true) String param1,
+      @RequestParam(value="param2", required=false) String param2){
+  }
+
+  ![image-20210802145415185](D:\db\笔记\image\image-20210802145415185.png)
+  @ResponseBody
+
+  responseBody表示服务器返回的时候以一种什么样的方式进行返回， 将内容或对象作为 HTTP 响应正文返回，值有很多，一般设定为json
+  @RequestBody
+
+  一般是post请求的时候才会使用这个请求，把参数丢在requestbody里面
+
+
+
+### SpringMVC
+
+- Web容器启动时，就会初始化Spring-webmvc-xxx.jar包下的DispatcherServlet.properties，该配置文件中的所有对象都回初始化到IOC容器中去
+
+  ```
+  # Default implementation classes for DispatcherServlet's strategy interfaces.
+  # Used as fallback when no matching beans are found in the DispatcherServlet context.
+  # Not meant to be customized by application developers.
+  国际化视图解析器
+  org.springframework.web.servlet.LocaleResolver=org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver
+  主题解析器
+  org.springframework.web.servlet.ThemeResolver=org.springframework.web.servlet.theme.FixedThemeResolver
+  HandlerMapping实例
+  org.springframework.web.servlet.HandlerMapping=org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping,\
+  	org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping,\
+  	org.springframework.web.servlet.function.support.RouterFunctionMapping
+  处理器适配器
+  org.springframework.web.servlet.HandlerAdapter=org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter,\
+  	org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter,\
+  	org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter,\
+  	org.springframework.web.servlet.function.support.HandlerFunctionAdapter
+  
+  处理器异常解析器
+  org.springframework.web.servlet.HandlerExceptionResolver=org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver,\
+  	org.springframework.web.servlet.mvc.annotation.ResponseStatusExceptionResolver,\
+  	org.springframework.web.servlet.mvc.support.DefaultHandlerExceptionResolver
+  策略视图名称转换器
+  org.springframework.web.servlet.RequestToViewNameTranslator=org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator
+  视图解析器
+  org.springframework.web.servlet.ViewResolver=org.springframework.web.servlet.view.InternalResourceViewResolver
+  FlashMap管理器
+  org.springframework.web.servlet.FlashMapManager=org.springframework.web.servlet.support.SessionFlashMapManager
+  ```
+
+  - RequestMappingHandlerMapping：一个处理器映射器的实现类，使用一个LinkedHashMap来存储请求路径和控制器之间的对应关系
+
+    ```
+    private Map<String, Predicate<Class<?>>> pathPrefixes = new LinkedHashMap<>();
+    ```
+
+- 请求转换器；主要使用通过调用HttpMessageConverter，再经过WebDataBinder里的三种转换器转换为Java PoJo类，再验证，最后就可以调用控制器了；这些验证都是发生在处理器内部的
+
+  - 有Converter（一对一转换）、GenericConverter（数组转换）、Formatter（日期格式转换）三种转换器接口；下面是根据前端传递的已“-”分割的字符串转换为User对象，需要自定义个转换器
+
+    ```java
+    /**
+     * SpringMVC需要加Component;SpringBoot不需要加
+     */
+    @Component
+    public class MConverter implements Converter<String, User> {
+        @Override
+        public User convert(String userStr) {
+    //        userStr="代彬-123456";
+            User user = new User();
+            String[] strings = userStr.split("-");
+            String userName=strings[0];
+            String password=strings[1];
+            user.setName(userName);
+            user.setPassword(password);
+            return user;
+        }
+    }
+    ```
+
+    
+
+  - GernericConverter有个StringToCollectionConverter把字符串转换为集合的转换器，如果是转换为User，前提是先自定义个StringToUser的Converter转换器；StringToCollectionConverter转换器使用的StringUtils的分割方法默认根据“,”来分割成对象数组
+
+    ```java
+    	@Override
+    	@Nullable
+    	public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+    		if (source == null) {
+    			return null;
+    		}
+    		String string = (String) source;
+    
+    		String[] fields = StringUtils.commaDelimitedListToStringArray(string);
+    		TypeDescriptor elementDesc = targetType.getElementTypeDescriptor();
+    		Collection<Object> target = CollectionFactory.createCollection(targetType.getType(),
+    				(elementDesc != null ? elementDesc.getType() : null), fields.length);
+    
+    		if (elementDesc == null) {
+    			for (String field : fields) {
+    				target.add(field.trim());
+    			}
+    		}
+    		else {
+    			for (String field : fields) {
+    				Object targetElement = this.conversionService.convert(field.trim(), sourceType, elementDesc);
+    				target.add(targetElement);
+    			}
+    		}
+    		return target;
+    	}
+    ```
+
+    - ConversionService接口的实现类有DefaultFormattingConversionService；Converter、GenericConverter、Formatter的所有实现类都注册在该类中；
+
+    - 其中StringUtils.commaDelimitedListToStringArray(string)的原理，根据“，”分割为字符串数组
+
+    ```java
+    public static String[] commaDelimitedListToStringArray(@Nullable String str) {
+    		return delimitedListToStringArray(str, ",");
+    	}
+    
+    ```
+
+- 参数验证器
+
+  - WebDataBinder里面既有转换器，也有验证器；自定义验证器需要实现Validator接口
+
+    ```java
+    public interface Validator {
+        //判断当前验证器是否支持该Class对象
+    	boolean supports(Class<?> clazz);
+        //验证规则
+    	void validate(Object target, Errors errors);
+    }
+    ```
+
+- 文件上传
+
+  - 在SpringBoot中使用MultipartFile时，默认会生成StandardServletMultipartResolver对象，里面在把HttpServletRequest转换为MultipartHttpServletRequest时用LinkedMultiValueMap来接收HttpServletRequest里面的parts对象；
+
+  - MultipartHttpServletRequest继承了HttpServletRequest，功能都有，只是扩展了文件相关的功能
+
+    ```java
+    public interface MultipartHttpServletRequest extends HttpServletRequest, MultipartRequest {
+    
+    	/**
+    	 * Return this request's method as a convenient HttpMethod instance.
+    	 */
+    	@Nullable
+    	HttpMethod getRequestMethod();
+    
+    	/**
+    	 * Return this request's headers as a convenient HttpHeaders instance.
+    	 */
+    	HttpHeaders getRequestHeaders();
+    
+    	/**
+    	 * Return the headers associated with the specified part of the multipart request.
+    	 * <p>If the underlying implementation supports access to headers, then all headers are returned.
+    	 * Otherwise, the returned headers will include a 'Content-Type' header at the very least.
+    	 */
+    	@Nullable
+    	HttpHeaders getMultipartHeaders(String paramOrFileName);
+    }
+    ```
+
+    
+
+## SpringBoot
+
+- 通过WebMvcAutoConfigurationAdapter自动配置类，SpringBoot就可以自动配置SpringMVC的初始化；
+
+  ```java
+  //WebMvcAutoConfigurationAdapter的构造函数
+  public WebMvcAutoConfigurationAdapter(
+  				org.springframework.boot.autoconfigure.web.ResourceProperties resourceProperties,
+  				WebProperties webProperties, WebMvcProperties mvcProperties, ListableBeanFactory beanFactory,
+  				ObjectProvider<HttpMessageConverters> messageConvertersProvider,
+  				ObjectProvider<ResourceHandlerRegistrationCustomizer> resourceHandlerRegistrationCustomizerProvider,
+  				ObjectProvider<DispatcherServletPath> dispatcherServletPath,
+  				ObjectProvider<ServletRegistrationBean<?>> servletRegistrations) {
+  			this.resourceProperties = resourceProperties.hasBeenCustomized() ? resourceProperties
+  					: webProperties.getResources();
+  			this.mvcProperties = mvcProperties;
+  			this.beanFactory = beanFactory;
+  			this.messageConvertersProvider = messageConvertersProvider;
+  			this.resourceHandlerRegistrationCustomizer = resourceHandlerRegistrationCustomizerProvider.getIfAvailable();
+  			this.dispatcherServletPath = dispatcherServletPath;
+  			this.servletRegistrations = servletRegistrations;
+  			this.mvcProperties.checkConfiguration();
+  		}
+  ```
+
+  - 如果不想要这些默认配置，想使用自己的默认配置；可以实现WebMvcConfigurer接口，里面全是defalut方法
+
+- SpringMVC的初始化配置类为WebMvcProperties；
+
+  ```java
+  时间日期的默认配置
+  		/**
+  		 * Date format to use, for example `dd/MM/yyyy`.
+  		 */
+  		private String date;
+  
+  		/**
+  		 * Time format to use, for example `HH:mm:ss`.
+  		 */
+  		private String time;
+  
+  		/**
+  		 * Date-time format to use, for example `yyyy-MM-dd HH:mm:ss`.
+  		 */
+  		private String dateTime;
+  Servlet的默认配置
+  		/**
+  		 * Path of the dispatcher servlet. Setting a custom value for this property is not
+  		 * compatible with the PathPatternParser matching strategy.
+  		 */
+  		private String path = "/";
+  
+  		/**
+  		 * Load on startup priority of the dispatcher servlet.
+  		 */
+  		private int loadOnStartup = -1;
+  
+  ```
+
+- 使用com.alibaba.excel.EasyExcel包来对Excel文件进行操作

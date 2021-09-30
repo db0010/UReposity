@@ -117,12 +117,12 @@
 #### 3.索引的设计原则
 
 - 表的数据量少的情况下不用设置索引
-- 索引设置在where条件设计的表字段上、多表连接的on关键字后的连接表字段上
+- 索引设置在where条件设计的表字段上、多表连接的on关键字后的连接表字段上、group by分组的字段上
 - 设置联合索引时要遵循最左前缀原则，让最可能会使用的索引放在最左边（where中and条件的先后顺序对如何选择索引是无关的。因为优化器会去分析判断选用哪个索引）
 - 使用短索引，就是可在索引列后面加上字符长度，如index(列(10))，这样就表示先只比较该列的前十个字符，如果还没找到，那就把前面十个字符都不匹配的排除掉
 - 不可滥用索引，索引也要占磁盘空间，并且会对更新操作的性能有影响
 - 外键必须设置索引，InnoDB中设置外键之后会自动创建一个跟列字段相同的索引；因此可以不用手动设置
-- 更新操作很平凡的列不适合设置索引
+- 更新操作很频繁的列不适合设置索引
 - 不能很好的区分列数据也不适合设置索引，如性别列，只有男女
 - 要添加索引时，考虑能不能在已有索引的基础上添加联合索引
 - 在列类型为text、image、bit时不适合设置索引
@@ -201,7 +201,7 @@
 
 - Read Uncommitted（读未提交）;会读取其他事务未提交的数据（更新语句），如果其他事务回滚，那么该事务读取到的数据就是脏数据，这就是脏读
 - Read Committed（读已提交）;通过只读取其他事务已经提交了的数据来避免脏读、脏写；但是不能避免重复读取数据，因为当重复读的时候读取的的都是最新的行数据，当其他事务在期间有更新行数据并提交时就会发生重复读的行数据不一致
-- Repeatable Read（可重复读）;在事务第一次读数据的时候选定所要读取的数据行的版本，在该事务的整个期间都读取该版本的数据行，这样每次读取的数据都是一致的；幻读是指，在一个事务中，第一次查询某条记录，发现没有，但是，当试图更新这条不存在的记录时，竟然能成功，并且，再次读取同一条记录，它就神奇地出现了。
+- Repeatable Read（可重复读）;为MySQL的默认隔离级别；在事务第一次读数据的时候选定所要读取的数据行的版本，在该事务的整个期间都读取该版本的数据行，这样每次读取的数据都是一致的；幻读是指，在一个事务中，第一次查询某条记录，发现没有，但是，当试图更新这条不存在的记录时，竟然能成功，并且，再次读取同一条记录，它就神奇地出现了。
 - Serializable（串行读）；所有事务都是串行的依次执行，避免了所有的脏读，不可重复读，幻读的情况；但是性能很低
 
 Read Committed和Reoeatable Read 都是使用的MVCC（多版本并发控制）来实现的；并不是通过传统的读写锁，传统的读写锁只支持读读并发，其他的读写，写写，写读都是不能并发的；MVCC就可以实现读读，读写，写读的并发，写写会被阻塞；MVCC 机制会记录每行数据的历史版本，通过可见性算法、undo 日志以及 read view 事务id数组控制每个读操作所读取的行数据历史版本，
@@ -721,7 +721,14 @@ WHERE class_id = 1
 ORDER BY score DESC;
 ```
 
-（7）查询结果按照页面返回；关键字：limit 3 offset 6；3是指一页三条记录，6表示从是第2页的最后一个个记录的索引开始（不包括），意思是返回的页面的索引为7，8，9；分页查询的关键在于，首先要确定每页需要显示的结果数量pageSize（这里是3），然后根据当前页的索引pageIndex（从1开始），确定LIMIT和OFFSET应该设定的值：
+（7）分页查询；好处是分开操作记录，避免了操作大量数据影响性能延迟；关键字：limit 3 offset 6；3是指一页三条记录，6表示从是第2页的最后一个个记录的索引开始（不包括），意思是返回的页面的索引为7，8，9；分页查询的关键在于，首先要确定每页需要显示的结果数量pageSize（这里是3），然后根据当前页的索引pageIndex（从1开始），确定LIMIT和OFFSET应该设定的值：
+
+```
+语法1：select * from user limit startIndex,pageSize//例如(0,2]表示第0个记录开始，所有记录两条为1页，返回从0开始的页
+语法2：select * from user limit n	//表示返回从(0,n]的记录，返回前n条记录
+```
+
+
 
 - LIMIT总是设定为pageSize；
 
@@ -1087,7 +1094,7 @@ order by salary desc;
 - 在select语句中使用group by字句实现分组
 - 分组的注意事项
   - 如果在group by字句中嵌套了分组，数据将在最后规定的分组上进行汇总（外层还是内层？）
-  - 如果分组中null，那么null也会单独为一组
+  - 如果分组中有null，那么null也会单独为一组
   - group by在where之后，order by之前
   - group by和having一起使用，having是以组为单位的，where是以行为单位的
   - group by默认会排序的，默认是升序
@@ -1301,6 +1308,26 @@ order by salary desc;
             -> 'one'
     ```
 
+    - case when的应用；常用在select语句中，作为一个子句；
+
+      ```sql
+    //统计各个分数段的学生人数情况，这里可以count(*)表示计算全表的记录,也可以count(score)表示score不等于null的记录
+      SELECT COUNT(*),(
+    	CASE 
+      	WHEN s.score<60 THEN '不及格'
+      	WHEN s.score>=60 AND s.score<80 THEN '良好'
+      	WHEN s.score>=80 AND s.score<=100 THEN '优秀'
+      	ELSE '不在范围内'
+      	END 
+    ) AS score2	//注意这里结果的别名不能取students表中的字段，不然会混淆导致结果出错
+      FROM students s
+    GROUP BY score2
+      ```
+
+      运行结果
+
+      ![image-20210918212255128](D:\zuo_mian\java小知识\image\image-20210918212255128.png)
+  
     存储程序的CASE语句实现一个复杂的条件构造。如果*search_condition* 求值为真，相应的SQL被执行。如果没有搜索条件匹配，在ELSE子句里的语句被执行。
 
     **注意：**这里介绍的用在 存储程序里的CASE语句与12.2节“控制流程函数”里描述的SQL CASE表达式的CASE语句有轻微不同。这里的CASE语句不能有ELSE NULL子句，并且用END CASE替代END来终止
@@ -1310,75 +1337,75 @@ order by salary desc;
     ```
     [begin_label:] LOOP
         statement_list
-    END LOOP [end_label]
+  END LOOP [end_label]
     ```
 
     LOOP允许某特定语句或语句群的重复执行，实现一个简单的循环构造。在循环内的语句一直重复直循环被退出，退出通常伴随着一个LEAVE 语句。
 
     LOOP语句可以被标注。除非*begin_label*存在，否则*end_label*不能被给出，并且如果两者都出现，它们必须是同样
-
+  
   - #### LEAVE语句
-
+  
     ```
     LEAVE label
     ```
-
+  
     这个语句被用来退出任何被标注的流程控制构造。它和BEGIN ... END或循环一起被使用
-
+  
   - #### ITERATE语句
 
     ```
-    ITERATE label
+  ITERATE label
     ```
-
+  
     ITERATE只可以出现在LOOP, REPEAT, 和WHILE语句内。ITERATE意思为：“再次循环。”
-
+  
     例如：
-
-    ```
+  
+  ```
     CREATE PROCEDURE doiterate(p1 INT)
-    BEGIN
+  BEGIN
       label1: LOOP
-        SET p1 = p1 + 1;
+      SET p1 = p1 + 1;
         IF p1 < 10 THEN ITERATE label1; END IF;
-        LEAVE label1;
+      LEAVE label1;
       END LOOP label1;
       SET @x = p1;
     END
-    ```
-
+  ```
+  
   - #### REPEAT语句
-
+  
     ```
     [begin_label:] REPEAT
         statement_list
     UNTIL search_condition
     END REPEAT [end_label]
     ```
-
+  
     REPEAT语句内的语句或语句群被重复，直至*search_condition* 为真。
-
+  
     REPEAT 语句可以被标注。 除非*begin_label*也存在，*end_label*才能被用，如果两者都存在，它们必须是一样的
 
     例如：
 
     ```
-    mysql> delimiter //
+  mysql> delimiter //
      
     mysql> CREATE PROCEDURE dorepeat(p1 INT)
         -> BEGIN
         ->   SET @x = 0;
         ->   REPEAT SET @x = @x + 1;
-        		UNTIL @x > p1 END REPEAT;	//当@x>p1为真是退出循环；
+      		UNTIL @x > p1 END REPEAT;	//当@x>p1为真是退出循环；
         -> END
         -> //
     ```
-  ```
+```
   
-  注意：控制循序退出，还可用类似下面的语句配合FTECH语句遍历游标，当遍历完之后就会出现未找到的MySQL错误'02000'，就被continue handler捕获到，把done设置为1；这时的until done end repeat;语句就退出循环达到了遍历所有行的目的
+注意：控制循序退出，还可用类似下面的语句配合FTECH语句遍历游标，当遍历完之后就会出现未找到的MySQL错误'02000'，就被continue handler捕获到，把done设置为1；这时的until done end repeat;语句就退出循环达到了遍历所有行的目的
   
-    declare continue handler for SQLstate '02000' set done=1;
-  ```
+  declare continue handler for SQLstate '02000' set done=1;
+```
 
   
 
@@ -1389,19 +1416,22 @@ order by salary desc;
         statement_list
     END WHILE [end_label]
     ```
-
+  
     WHILE语句内的语句或语句群被重复，当search_condition为真时才执行循环体；gin_label也存在，end_label才能被用，如果两者都存在，它们必须是一样的
     
   - 流程控制函数
-
+  
     - IF(*expr1*,*expr2*,*expr3*)
-
-    如果 *expr1* 是TRUE (*expr1* <> 0 and *expr1* <> NULL)，则 IF()的返回值为*expr2*; 否则返回值则为 *expr3*。IF() 的返回值为数字值或字符串值，具体情况视其所在语境而定
-
-    - IFNULL(*expr1*,*expr2*)
-
+    
+    
+  如果 *expr1* 是TRUE (*expr1* <> 0 and *expr1* <> NULL)，则 IF()的返回值为*expr2*; 否则返回值则为 *expr3*。IF() 的返回值为数字值或字符串值，具体情况视其所在语境而定
+    
+  - IFNULL(*expr1*,*expr2*)
+      
+  
     假如*expr1* 不为 NULL，则 IFNULL() 的返回值为 *expr1*; 否则其返回值为 *expr2*。IFNULL()的返回值是数字或是字符串，具体情况取决于其所使用的语境
-
+  
     - NULLIF(*expr1*,*expr2*)
-
+      
+    
     如果*expr1* = *expr2* 成立，那么返回值为NULL，否则返回值为 *expr1*
