@@ -351,12 +351,12 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
   - 强引用；比如Object obj=new Object（）；这样直接new出来的就是强引用
   - 弱引用；引用的值被修改过
 - 垃圾回收回收的是垃圾对象的内存，内存被回收释放之后对象也就没有了；垃圾收集器主要活动的区域就是堆中，因为new的对象都是在堆中；
-- 可以作为GCRoots根对象的有：
-  1. 虚拟机栈帧中的引用对象（线程栈中的本地变量表）
-  2. 方法区中的常量引用的对象
-  3. 方法区中类静态属性引用的对象
-  4. 本地方法栈（native）中引用的对象
-  5. 活跃线程
+- 可以作为GCRoots根对象的有（注意：是下面提到的对象，不是引用）：
+  1. 虚拟机栈帧中的引用对象（线程栈中的本地变量表）；例如方法栈中的参数、局部变量、临时变量
+  2. 方法区中的常量引用的对象；例如字符串常量池里的对象（但是JDK1.8之后字符串常量池移动到了堆区）
+  3. 方法区中静态属性引用的对象，例如类中引用类型的静态变量
+  4. 本地方法栈（native）中引用的对象；虚拟机内部使用的对象，如Class对象、异常对象、类加载器对象等
+  5. 同步锁（如synchronized）持有的对象
 - 标记阶段的特点
   - 在标记之前会暂停应用线程，如果线程在运行的话，检测到的对象都是变化的；这时叫安全点（safe point），这会触发一次Stop The World（STW）暂停
   - 暂停的时间（标记的时间）是由当前存活对象的数量决定的，并不取决于堆内对象的多少和堆的大小
@@ -367,7 +367,7 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
 > ![](D:\zuo_mian\java小知识\image\3789193-05ac8d99f632c6c7.png)
 
 - 分为标记和清除两个阶段，标记阶段就是使用根搜索算法的过程，标记的存活对象；清除的是未标记的对象
-- 优点：不需要进行对象的移动；特点是仅对未标记的对象清理，在存活对象较多的时候极为高效
+- 优点：不需要进行对象的移动；特点是仅对未标记的对象清理，在存活对象较多的时候极为高效（比如老年代）
 - 缺点：标记和清除的效率都不高；
   - 因为需要用一个空闲表来记录空闲区域以及大小，对空闲表的管理降低了效率
   - 清除垃圾对象之后会让整个内存区域产生不连续的内存碎片
@@ -635,15 +635,98 @@ public Class<?> loadClass(String name)throws ClassNotFoundException {
 ### 六、synchronized与volatile的区别
 
 - 参考链接：https://blog.csdn.net/zhibinli/article/details/99697408
+
 - 修饰的目标不同
-  - synchonized可以修饰类、方法、代码块，但是不能修饰变量；volatile只能修饰变量
+  
+  - synchonized可以修饰方法、代码块，但是不能修饰变量和类；volatile只能修饰变量
+  
 - 有序性；该有序性指的是同一段代码在不同线程之间的有序性
   - volatile关键字本身就包含了禁止指令排序的语义，在包含使用了volatile关键字的的代码都会按照编写的代码顺序执行；不会使用硬件指令集的指令优化
-  - synchronized关键字通过加锁来实现指令的有序性；因为一个变量同一时刻只允许一条线程对其进行lock操作
+  - synchronized关键字通过加锁来实现指令的有序性；比如两个线程用同一个锁来锁各自的代码块（或者方法），那么就只能串行化的执行代码块（或者方法）；它的有序性体现在代码块之间，而代码块内部是会发生指令重排序的
+  
 - 可见性
-  - 
+  
+  - synchronized的可见性是通过规则：在执行unlock操作之前，必须先把变量同步回主内存（执行store、write操作），这样多个线程就都可见了（JMM的通信都是通过主内存实现的）
+  
+  - volatile的可见性是通过每次修改volatile变量的值都会立即同步到主内存中，读取volatile变量值时都会刷新主内存，保证每次读取的都是最新值；（跟普通变量的区别：修改普通变量时不会立即同步到主内存，先存在工作内存之中）
+  
+    ```java
+    /**
+    * m=0,n=1都是普通变量
+     * 虽然A线程的start()方法先于V线程的start()先调用，但是实际的线程开始顺序是不确定的；线程中对线程安全无影响的代码行
+     * 会被编译器或者处理器重排序优化
+     * 运行情况一：A线程先开始，A线程获得的值都是在V线程之前
+     * 线程A启动
+     * 线程V启动
+     * 1A线程m
+     * 1V线程m
+     * 0Ｖ线程ｎ
+     * 1A线程n
+     * 运行情况二：V线程先开始，则V线程获得的值都在线程A之前
+     * 线程A启动
+     * 线程V启动
+     * 1V线程m
+     * 1A线程m
+     * 0A线程n
+     * 0Ｖ线程ｎ
+     */
+    		new Thread(() -> {
+                System.out.println("线程A启动");
+                System.out.println(++m+"A线程m");
+                System.out.println(n+"A线程n");
+            }).start();
+    
+            new Thread(() -> {
+                System.out.println("线程V启动");
+                System.out.println(m+"V线程m");
+                System.out.println(--n+"Ｖ线程ｎ");
+            }).start();
+    ```
+  
+    
+  
+  - final也有多线程之间的可见性：被final修饰的字段在构造器中一旦初始化完成就能被多线程共享（猜测原理是：常量在方法区，方法区为线程共享区，这样多个线程就可实时访问）
+  
 - 原子性
-- synchronized三个特性都有，volatile只有有序性和可见性，不能保证原子性
+
+  - synchronized实现原子性通过加锁的语义，把多个指令抽象为一个原子指令；如果用的同一个锁的多个synchronized代码块会串行的执行
+
+- synchronized三个特性都有；而volatile只有有序性和可见性，不能保证原子性
+
+- synchronized使用的注意事项
+
+  - 当想要在多个线程之间实现代码的顺序执行，那么需要在多个线程的内部使用synchronized，锁的是同一把锁才行（注意：不能在主线程中使用两个synchronized代码块来企图锁住）
+
+    ```java
+    public  class  JMMTest {
+        static int m = 0;
+        static  int n = 1;
+        public static void main(String[] args) {
+            JMM();
+        }
+        public static void JMM() {
+            //注意：这里synchronized要在线程里面用，不然无法锁住的
+                new Thread(() -> {
+                    synchronized (JMMTest.class) {
+                    System.out.println("线程A启动");
+                    System.out.println(++m + "A线程m");
+                    System.out.println(n + "A线程n");
+                    }
+                }).start();
+    
+                new Thread(() -> {
+                    synchronized (JMMTest.class) {
+                    System.out.println("线程V启动");
+                    System.out.println(m + "V线程m");
+                    System.out.println(--n + "Ｖ线程ｎ");
+                    }
+                }).start();
+    
+        }
+    }
+    ```
+
+- volatile的规则：写操作一定在读操作之前完成；而读操作可能在写操作之前或者之后（这里是不确定的）
 
 ### 七、synchronized和Lock的区别
 

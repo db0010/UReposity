@@ -1,4 +1,4 @@
-### 一、Spring
+# 一、Spring
 
 12月28日：（1）依赖注入中的构造注入，<constructor-arg></constructor-arg>通过的是pojo中的有参构造函数依赖注入中的set注入，<property name="" value=""></property>通过的是pojo中的无参构造函数（最常用的）
 2021年1月2日： 
@@ -224,7 +224,7 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
 
 - 核心业务还是要OOP来发挥作用，与AOP的侧重点不一样，前者有种纵向抽象的感觉，后者则是横向抽象的感觉， AOP只是OOP的补充，无替代关系
 
-### 二、Spring Mvc
+# 二、Spring MVC
 
 #### @RequestMapping注解
 
@@ -321,7 +321,7 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
 
   - 下面还可以继承BeanPostProcessor（后置处理器）接口，对所有Bean生效，其他接口对单个Bean生效，分为PostProcessBeforeInitialization预初始化方法和PostProcessAfterInitialization后初始化方法
 
-  ```
+  ```java
   @Component
   public class BussinessPerson implements Person, BeanNameAware, BeanFactoryAware, ApplicationContextAware, InitializingBean, DisposableBean {
       Animal animal = null;
@@ -405,11 +405,44 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
 
 ### SpringAOP
 
+- 没有使用SpringBoot，只使用Spring时启用AOP需要导入Spring-aspect的Jar包，以及在配置类上使用@EnableAspectJAutoProxy注解来让下面的@AspectJ注解生效
+
+  ```java
+@Target(ElementType.TYPE)
+  @Retention(RetentionPolicy.RUNTIME)
+  @Documented
+  @Import(AspectJAutoProxyRegistrar.class)
+  public @interface EnableAspectJAutoProxy {
+  
+  	/**
+  	 * 默认为flase是使用的是基于子类的CGLIB代理；当配置为ture是JDK动态代理
+  	 */
+  	boolean proxyTargetClass() default false;
+  ```
+  
+  ```java
+  /**
+   * 注意：在Spring中要使用@EnableAspectJAutoProxy注解来开启AOP！！！
+   */
+  @Configuration
+  @EnableAspectJAutoProxy
+  public class AopTestConfiguration {
+      @Bean("UserServiceImpl")
+      public UserServiceImpl userServiceImpl(){
+          return new UserServiceImpl();
+      }
+      @Bean("AspectTest")
+      public AspectTest aspectTest(){
+          return new AspectTest();
+      }
+  }
+  ```
+  
 - springBoot中使用的注解有@Before、@After、@Around、@AfterThrowAble、@AfterReturn、@Aspect、@Pointcut、
 
   - 切面；多个切面时，多个切面在连接点的输出顺序是混乱的，需要在切面上加@Order(值表示优先级)来控制输出顺序
 
-    ```
+    ```java
     @Aspect
     @Component
     @Order(1)
@@ -441,7 +474,7 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
 
   - 连接点
 
-    ```
+    ```java
     @Service
     public class UserServiceImpl implements UserService{
     
@@ -455,6 +488,28 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
         }
     }
     ```
+
+- 通知的运行顺序
+
+  - 没有异常时：before、目标方法、afterReturning、after
+
+    ```
+    执行了before方法
+    num:0
+    执行了afterReturning方法
+    执行了after方法
+    ```
+
+  - 有异常时：before、目标方法、afterThrowing、after
+
+    ```
+    执行了before方法
+    num:0
+    执行了afterThrowing方法
+    执行了after方法
+    ```
+
+    
 
 - Spring的AOP默认是使用的CGLIB动态代理；当配置spring.aop.proxy-target-class为false后，通过判断被代理类是否有接口来决定是否使用JDK动态代理
 
@@ -662,7 +717,71 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
     }
     ```
 
+- CORS解决跨域问题；跨域指的是在页面中请求与本页面不同域名的url，域名由协议、主机、端口号组成；由于浏览器为了防止跨站攻击，因此禁止跨域请求；CORS解决跨域问题的三种方式：
+
+  - 方式一：在控制器上加@CrossOrigin注解；缺点是每个接口都需要加，麻烦
+
+  - 方式二：使用拦截器，自定义一个拦截器来设置响应头的信息，加上Access-Control-Allow-Origin、Access-Control-Allow-Credentials、Access-Control-Allow-Methods响应头信息，在实现WebMvcConfigurer接口，把自定义的拦截器注册进去
+
+    ```java
+    public class AuthInterceptor implements HandlerInterceptor {
+        @Override
+        public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+            //表示接受任意域名的请求,也可以指定域名
+            response.setHeader("Access-Control-Allow-Origin", request.getHeader("origin"));
+            //该字段可选，是个布尔值，表示是否可以携带cookie
+            response.setHeader("Access-Control-Allow-Credentials", "true");
+            response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS");
+            response.setHeader("Access-Control-Allow-Headers", "*");
+            return true;
     
+        }
+    }
+    
+    /**
+     * 拦截器配置
+     */
+    @Configuration
+    public class InterceptorConfig implements WebMvcConfigurer {
+        @Bean
+        AuthInterceptor corsInterceptor() {
+            return new AuthInterceptor();
+        }
+        @Override
+        public void addInterceptors(InterceptorRegistry registry) {
+            /**
+             * 拦截全部路径，这个跨域需要放在最上面
+             */
+            registry.addInterceptor(corsInterceptor()).addPathPatterns("/**");
+            WebMvcConfigurer.super.addInterceptors(registry);
+        }
+    
+    }
+    ```
+
+  - 方式三：使用SpringMvc自带的CORS跨域映射方法，同样要实现WebMvcConfigurer接口，重写addCorsMappings(corsRegistry registry)方法，注册拦截的信息
+
+    ```java
+     @Override
+        public void addCorsMappings(CorsRegistry registry) {
+            String[] allowedOrigins;
+    
+            if (webInfoService.isProduct()) {
+                allowedOrigins = new String[]{"https://iwatch.bookln.cn", "https://erp321.com", "https://ww.erp321.com", "https://www.erp321.com"};
+            } else if (webInfoService.isPrepub()) {
+                allowedOrigins = new String[]{"https://iwatch-prepub.bookln.cn", "https://erp321.com", "https://ww.erp321.com", "https://www.erp321.com"};
+            } else {
+                allowedOrigins = new String[]{"http://localhost:8383", "https://yuntisyscdnsrc.bookln.cn", "https://iwatch-daily.bookln.cn"};
+            }
+    
+            registry.addMapping("/**")
+                    .allowCredentials(true)
+                    .allowedOrigins(allowedOrigins)
+                    .allowedMethods(CorsConfiguration.ALL);
+        }
+    ```
+
+  - 方式四：在网关解决，例如SpringCloudGateway，在配置文件里面配置globalcors
 
 ## SpringBoot
 
@@ -724,3 +843,92 @@ mysql8也是个版本临界点，8与8以下的数据库配置都不一样
   ```
 
 - 使用com.alibaba.excel.EasyExcel包来对Excel文件进行操作
+
+
+
+# 五、Spring源码
+
+## SpringIOC
+
+- 装配Bean的几种方式
+  - 
+
+## SpringAOP
+
+- 调用链的核心
+
+  ```java
+  //ReflectiveMethodInvocation类，类似全局中转作用
+  public Object proceed() throws Throwable {
+      	//这里表示通知方法都执行完了，最后再执行目标方法
+  		if (this.currentInterceptorIndex == this.interceptorsAndDynamicMethodMatchers.size() - 1) {
+  			return invokeJoinpoint();
+  		}
+  
+  		Object interceptorOrInterceptionAdvice =
+  				this.interceptorsAndDynamicMethodMatchers.get(++this.currentInterceptorIndex);
+  		if (interceptorOrInterceptionAdvice instanceof InterceptorAndDynamicMethodMatcher) {
+  			// Evaluate dynamic method matcher here: static part will already have
+  			// been evaluated and found to match.
+  			InterceptorAndDynamicMethodMatcher dm =
+  					(InterceptorAndDynamicMethodMatcher) interceptorOrInterceptionAdvice;
+              //目标类是否为null，为null则返回无参构造生成的class
+  			Class<?> targetClass = (this.targetClass != null ? this.targetClass : this.method.getDeclaringClass());
+  			if (dm.methodMatcher.matches(this.method, targetClass, this.arguments)) {
+  				return dm.interceptor.invoke(this);
+  			}
+  			else {
+  				// 如果匹配失败
+  				// 跳过该拦截器，直接调用拦截链的下一个方法
+  				return proceed();
+  			}
+  		}
+  		else {
+  			// It's an interceptor, so we just invoke it: The pointcut will have
+  			// been evaluated statically before this object was constructed.
+  			return ((MethodInterceptor) interceptorOrInterceptionAdvice).invoke(this);
+  		}
+  	}
+  ```
+
+  
+
+## Spring事务
+
+## 循环依赖
+
+## Bean的声明周期
+
+- 创建BeanFactory；这里有BeanFactoryPostProcessor，也会执行对应前置方法和后置方法；但是这里一般都不会干预
+
+- 实例化：通过反射来获取对象（这时的对象是个空壳对象，属性都是默认值），然后暴露在三级缓存中（三级缓存是为了解决循环依赖的）
+
+- 填充属性：调用populateBean()方法；把三级缓存和二级缓存中的早期对象填充属性之后就是一个完整的对象了，之后就加到一级缓存中（也叫单例池）
+
+- 执行Aware接口：比如BeanNameAware、BeanFactoryAware、BeanClassLoaderAware
+
+  - Aware接口的作用就是设置对应的值；比如设置BeanName、设置BeanFactory等
+
+    ```java
+    //AbstractRefreshableConfigApplicationContext类实现了BeanNameAware接口
+    @Override
+    	public void setBeanName(String name) {
+    		if (!this.setIdCalled) {
+    			super.setId(name);
+    			setDisplayName("ApplicationContext '" + name + "'");
+    		}
+    	}
+    ```
+
+    
+
+- postProcessBeforeInitialization：Bean的后置处理器初始化之前的方法
+
+- 调用init-method方法初始化；如果有@PostConstructor，会先执行该方法的初始化，再执行init-method方法
+
+  - 注意点：三者的执行的先后顺序Constructor >> @Autowired >> @PostConstruct
+
+- postProcessAfterInitialization：Bean的后置处理器初始化之后的方法
+
+- 执行destory()销毁方法；如果有@PreDestory，那么会在destory方法之后执行@PreDestory注解
+

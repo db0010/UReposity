@@ -669,7 +669,7 @@ Quart定时器是纯Java编写的开源任务调度框架，通过触发器设�
            xmlns="http://www.springframework.org/schema/beans"
            xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd">
        <bean id="taskJob" class="com.example.demo.quartz.TestTask"/>
-       <bean id="jobDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+       <bean id="jobDetail" 				    	      class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
            <property name="targetObject">
                <ref bean="taskJob"/>
            </property>
@@ -788,7 +788,7 @@ Quart定时器是纯Java编写的开源任务调度框架，通过触发器设�
 
 ### 十一、自定义工具类
 
-- Jason工具类
+- Json工具类
 
   - 对于Date时间对象；Jackson对于date对象会转为一串表示时间的格式，不明了，需要转换为yyyy-MM-dd HH:mm:ss的格式
 

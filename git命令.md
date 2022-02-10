@@ -117,3 +117,10 @@
 - 命令git push origin --tags可以推送全部未推送过的本地标签；
 - 命令git tag -d <tagname>可以删除一个本地标签；
 - 命令git push origin :refs/tags/<tagname>可以删除一个远程标签
+
+
+
+### 常见问题
+
+- 无法向远程仓库提交；通过pull拉取代码，merge合并本地代码之后在提交等
+  - 参考：https://blog.csdn.net/weixin_41287260/article/details/89742151
